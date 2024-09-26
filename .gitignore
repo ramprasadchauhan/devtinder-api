@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 .env
 overflow.txt
+test.js

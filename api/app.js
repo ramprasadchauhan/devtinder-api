@@ -20,7 +20,10 @@ app.post("/signup", async (req, res) => {
         await user.save()
         res.send("User created successfully");
     } catch (error) {
-        res.status(400).send( "error creating user: ", error.message);
+        console.log("error in signup api", error.message)
+        res.status(400).json({
+            message: error.message
+        })
     }
   
 })
@@ -84,22 +87,30 @@ app.delete("/user", async(req, res) => {
 
 // update user data
 
-app.patch("/user", async(req, res) => {
-    const userId = req.body.userId;
-    const data = req.body
+app.patch("/user/:userId", async(req, res) => {
+   
     try {
-      const user =  await User.findByIdAndUpdate(userId, data)
+        const userId = req.params?.userId;
+        const data = req.body
+        const ALLOWED_UPDATE = [
+            "photoUrl", "about", "gender", "age", "skills"
+        ]
+        const isUpdateAllowed = Object.keys(data).every(k => ALLOWED_UPDATE.includes(k))
+        if(!isUpdateAllowed){
+           return res.status(400).send("Update is not allowed")
+        }
+      const user =  await User.findByIdAndUpdate(userId, data, {
+        runValidators: true
+      } )
         res.status(200).json({
             message: "user updated successfully",
             data: user
         })
     } catch (error) {
         console.log("error in user update api", error.message)
-        return res.status(500).json({
-            message: error.message
-        })
+        return res.status(500).send("Update failed" + error.message)
     }
-} )
+})
 
 // update by email 
 
