@@ -1,11 +1,12 @@
 const express = require("express");
 const connectDB = require("./config/database.js");
 const User = require("./models/user.model.js");
-const { validateSignUpData } = require("./utils/validation.js");
-const bcrypt = require('bcryptjs');
 const cookieParser = require("cookie-parser")
-const jwt = require("jsonwebtoken");
 const { userAuth } = require("./middleware/auth.js");
+const authRouter = require("./routes/auth.js")
+const profileRouter = require("./routes/profile.js")
+const requestRouter = require("./routes/request.js")
+
 
 const app = express();
 
@@ -15,122 +16,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
 
+app.use("/api/v1/auth", authRouter)
+app.use("/api/v1/profile", profileRouter)
+app.use("/api/v1/request", requestRouter)
 
-app.post("/signup", async (req, res) => {
-    try {
-    // validation of data
-    validateSignUpData(req)
-    const {firstName, lastName, emailId, password} = req.body
-    //Encrypt the password
-    const passwordHash = await bcrypt.hashSync(password, 10)
-    console.log(passwordHash)
-    // create a new user object
-      const user = new User(
-     { firstName, lastName, emailId, password: passwordHash }
-    );
-
-        await user.save()
-        res.send("User created successfully");
-    } catch (error) {
-        console.log("error in signup api", error.message)
-        res.status(400).json({
-            message: error.message
-        })
-    }
-  
-})
-
-//  login 
-
-app.post("/login", async(req, res) => {
-    try {
-        const {emailId, password} = req.body;
-        if(!emailId || !password){
-            return res.status(400).json({
-                message: "please enter email and password"
-            })
-        }
-     const user =  await User.findOne({
-        emailId
-     })
-     if(!user){
-        throw new Error("Invalid credentials")
-     }
-     
-        const isPasswordValid = await bcrypt.compareSync(password, user.password )
-        if(!isPasswordValid){
-            throw new Error("Email or password is incorrect")
-         }
-         // create JWT Token
-         const token = await user.getJWT()
-         console.log(token)
-         res.cookie("token", token,  { expires: new Date(Date.now() + 8*60*60*1000 )})
-         return res.status(200).json({
-            message: "User login successfully"
-         })
-    } catch (error) {
-        console.log("error in login api", error.message)
-        res.status(400).json({
-            message: error.message
-        })
-    }
-} )
-
-// profile
-
-app.get("/profile", userAuth,  async(req, res) => {
-
-   try {
-    /*
-     const cookie = req.cookies;
-    
-     const {token} = cookie 
-     if(!token){
-        return res.status(400).send("Invalid Token, Please login")
-     }
-     // validate token
-     const decoded = jwt.verify(
-         token, process.env.JWT_SECRET
-     )
-    const {id} = decoded
-   const userData =  await User.findById(id)
-   if(!userData){
-    throw new Error("User not exist")
-   }
-   console.log("the logged in user is", userData)
-   const {password, ...rest} = userData._doc;
- //   console.log("Raw user data:",userData._doc); 
-     res.send(rest)
-     */
-    const user = req.user
-    if(!user) {
-        throw new Error("User not exist")
-    }
-    const {password, ...rest} = user._doc;
-    res.send(rest)
-   } catch (error) {
-    console.log("error in profile api", error.message)
-    res.status(400).json({
-        message: error.message
-    })
-   }
-} )
-
-// send connection request
-
-app.post("/sendConnectionRequest", userAuth, async(req, res) => {
-    try {
-        const user = req.user
-        console.log(user)
-        console.log(user.firstName + " connection request sended")
-        return res.status(200).send( user.firstName + "connection request sended")
-    } catch (error) {
-        console.log("error in connection request", error.message)
-        res.status(400).json({
-            message: error.message
-        })
-    }
-} )
 
 // get user by email
 
