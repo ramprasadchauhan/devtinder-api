@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
 const jwt = require("jsonwebtoken")
+const bcrypt = require("bcryptjs")
 const userSchema = new mongoose.Schema({
   firstName: {
     type: String,
     required: true,
-    minLength: 4,
+    minLength: 3,
     maxLength: 50
   },
   lastName: {
@@ -17,20 +18,20 @@ const userSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     trim: true,
-   validate(value){
-    if(!validator.isEmail(value)) {
-      throw new Error("Invalid email address" + value)
+    validate(value) {
+      if (!validator.isEmail(value)) {
+        throw new Error("Invalid email address" + value)
+      }
     }
-   }
   },
   password: {
     type: String,
     required: true,
-    validate(value){
-      if(!validator.isStrongPassword(value)) {
+    validate(value) {
+      if (!validator.isStrongPassword(value)) {
         throw new Error("Please enter strong password" + value)
       }
-     }
+    }
   },
   age: {
     type: Number,
@@ -51,11 +52,11 @@ const userSchema = new mongoose.Schema({
   photoUrl: {
     type: String,
     default: "https://geographyandyou.com/images/user-profile.png",
-    validate(value){
-      if(!validator.isURL(value)) {
+    validate(value) {
+      if (!validator.isURL(value)) {
         throw new Error("Invalid photo url" + value)
       }
-     }
+    }
   },
   about: {
     type: String,
@@ -65,23 +66,29 @@ const userSchema = new mongoose.Schema({
     type: [String],
     validate: {
       validator: (v) => {
-        return v.length <= 3
+        return v.length <= 5
       },
       message: props => `${props.value} exceeds the maximum number of 3 skills!`
     }
   }
-}, {timestamps: true})
+}, { timestamps: true })
 
-userSchema.methods.getJWT = async function() {
+userSchema.index({ firstName: 1, lastName: 1, emailId: 1 });
+
+userSchema.methods.getJWT = async function () {
   const user = this;
-  const token = await jwt.sign({id: user._id},  process.env.JWT_SECRET, {
+  const token = await jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
     expiresIn: "1d"
-  } )
+  })
   return token
 }
 
+userSchema.methods.validatePassword = async function (passwordUserInput) {
+  const user = this;
+  const isPasswordValid = await bcrypt.compare(passwordUserInput, user.password)
+  return isPasswordValid
+}
+
 const UserModel = mongoose.model('User', userSchema);
-
-
 
 module.exports = UserModel;
